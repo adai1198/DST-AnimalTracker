@@ -1,5 +1,5 @@
 name = "Animal Tracker"
-version = "23.01.31"
+version = "23.02.01"
 author = "adai1198"
 description = "Version: "..version.."\n"..
 [[

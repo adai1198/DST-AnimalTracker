@@ -218,7 +218,9 @@ function AnimalTracker:FollowTrack()
 
                         WaitForPlayerIdle(player, 10 * FRAMES)
 
-                        if player:GetDistanceSqToInst(dirt_pile) < 4 then
+                        if (player and player:IsValid()) and
+                           (dirt_pile and dirt_pile:IsValid()) and
+                           player:GetDistanceSqToInst(dirt_pile) < 4 then
                             -- print("FollowTrack", "Activate", dirt_pile, tpos)
                             -- Talk(string.format(STRINGS.UI.ANIMAL_TRACKER.INVESTIGATE_FMT, STRINGS.NAMES.DIRTPILE))
                             SendRPCToServer(RPC.LeftClick, ACTIONS.ACTIVATE.code, tpos.x, tpos.z, dirt_pile)
