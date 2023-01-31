@@ -4,17 +4,21 @@ SHORTCUT_KEY_LOST_TOY = GetModConfigData("shortcut_key_2")
 
 if _G.LanguageTranslator.defaultlang == 'cht' then
     _G.STRINGS.UI.ANIMAL_TRACKER = {
-        FOUND_TRACK_FMT = "發現一個%s...",
+        INVESTIGATE_FMT = "讓我檢查這個%s...",
         TRACKING_FMT = "正在搜索%s...",
         NOT_FOUND = "沒有發現足跡！",
-        NO_TOY_FOUND = "沒有發現遺失的玩具！"
+        NO_TOY_FOUND = "沒有發現遺失的玩具！",
+        FOUND_BEAST_FMT = "發現目標：%s",
+        STOP_TRACKING = "停止搜索。",
     }
 else
     _G.STRINGS.UI.ANIMAL_TRACKER = {
-        FOUND_TRACK_FMT = "Found a fresh %s...",
+        INVESTIGATE_FMT = "Investigating this %s...",
         TRACKING_FMT = "Now searching for %s...",
         NOT_FOUND = "No track is found!",
-        NO_TOY_FOUND = "No lost toy is found!"
+        NO_TOY_FOUND = "No lost toy is found!",
+        FOUND_BEAST_FMT = "Target found: %s",
+        STOP_TRACKING = "Stop tracking.",
     }
 end
 -- _G.LanguageTranslator.defaultlang
@@ -53,21 +57,21 @@ local AnimalTracker = _G.require "widgets/AnimalTracker"
 
 local function SwitchUI(onoff)
     if onoff then
-        controls.AnimalTracker:Show()
-        if _G.ANIMAL_TRACKER.notification_sound_found and not controls.AnimalTracker.visible then
+        if _G.ANIMAL_TRACKER.notification_sound_found and not controls.AnimalTracker:IsVisible() then
             _G.TheFocalPoint.SoundEmitter:PlaySound("dontstarve/common/researchmachine_lvl1_ding")
         end
+        controls.AnimalTracker:Show()
     else
-        controls.AnimalTracker:Hide()
-        if _G.ANIMAL_TRACKER.notification_sound_lose and controls.AnimalTracker.visible then
+        if _G.ANIMAL_TRACKER.notification_sound_lose and controls.AnimalTracker:IsVisible() then
             _G.TheFocalPoint.SoundEmitter:PlaySound("dontstarve/common/nightmareAddFuel")
         end
+        controls.AnimalTracker:Hide()
     end
-    controls.AnimalTracker.visible = onoff
 end
 
 local function CheckAndSwitchUI(inst)
-    SwitchUI(_G.ANIMAL_TRACKER:num_nearby_tracks() > 0)
+    -- SwitchUI(_G.ANIMAL_TRACKER:num_nearby_tracks() > 0)
+    SwitchUI(AnimalTracker:HasTrack())
 end
 
 AddClassPostConstruct("widgets/controls", function(self)
@@ -87,7 +91,7 @@ local function onfar(inst)
     inst:DoTaskInTime(1, CheckAndSwitchUI)
 end
 
-function onremove(inst)
+local function onremove(inst)
     _G.ANIMAL_TRACKER.nearby_tracks[inst.GUID] = nil
     inst:DoTaskInTime(1, CheckAndSwitchUI)
 end
@@ -128,11 +132,9 @@ function KeyHandler(key, down)
     if down then
         if _G.ConsoleCommandPlayer() then
             if SHORTCUT_KEY and key == _G[SHORTCUT_KEY] then
-                local ret = AnimalTracker:FollowTrack()
-                -- SwitchUI(ret)
+                AnimalTracker:OnClick()
             elseif SHORTCUT_KEY_LOST_TOY and key == _G[SHORTCUT_KEY_LOST_TOY] then
-                local ret = AnimalTracker:FindLostToy()
-                -- SwitchUI(ret)
+                AnimalTracker:FindLostToy()
             end
         end
     end
