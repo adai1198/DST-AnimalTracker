@@ -96,9 +96,13 @@ local function onremove(inst)
     inst:DoTaskInTime(1, CheckAndSwitchUI)
 end
 
+local function HasHUD()
+    return _G.ThePlayer and (_G.ThePlayer.HUD ~= nil) or false
+end
+
 AddPrefabPostInit("dirtpile", function(inst)
     -- return when it's server side
-    if _G.TheWorld.ismastersim then
+    if not HasHUD() then
         return inst
     end
     -- only apply on client side
@@ -114,7 +118,7 @@ end)
 
 AddPrefabPostInit("animal_track", function(inst)
     -- return when it's server side
-    if _G.TheWorld.ismastersim then
+    if not HasHUD() then
         return inst
     end
     -- only apply on client side
