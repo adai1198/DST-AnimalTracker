@@ -177,6 +177,25 @@ local function WaitForPlayerIdle(player, seconds)
           not player.components.playercontroller:IsDoingOrWorking()
 end
 
+local function UnifiedGoToPoint(player, tpos)
+    -- Simply use locomotor as the check for non-server-client servers (i.e. non-cave server or host with DST-alone mod).
+    local locomotor = player.components and player.components.locomotor or nil
+    if locomotor then
+        locomotor:GoToPoint(tpos)
+    else
+        SendRPCToServer(RPC.LeftClick, ACTIONS.WALKTO.code, tpos.x, tpos.z)
+    end
+end
+
+local function UnifiedActivateDirtPile(player, tpos, dirt_pile)
+    -- Simply use locomotor as the check for non-server-client servers (i.e. non-cave server or host with DST-alone mod).
+    local locomotor = player.components and player.components.locomotor or nil
+    if locomotor then
+        player:PushBufferedAction(BufferedAction(player, dirt_pile, ACTIONS.ACTIVATE))
+    else
+        SendRPCToServer(RPC.LeftClick, ACTIONS.ACTIVATE.code, tpos.x, tpos.z, dirt_pile)
+    end
+end
 
 function AnimalTracker:HasTrack()
     return GetNextDirtPile() ~= nil
@@ -203,58 +222,52 @@ function AnimalTracker:FollowTrack()
             if not dirt_pile then
                 Talk(STRINGS.UI.ANIMAL_TRACKER.NOT_FOUND)
             else
-                if locomotor then
+                while dirt_pile ~= nil do
                     local tpos = dirt_pile:GetPosition()
-                    locomotor:GoToPoint(tpos)
-                    self:SpawnMoleTracingAnim(player:GetPosition(), tpos)
-                else
-                    while dirt_pile ~= nil do
-                        local tpos = dirt_pile:GetPosition()
 
-                        -- print("FollowTrack", "WalkTo", dirt_pile, tpos)
-                        -- Talk(string.format(STRINGS.UI.ANIMAL_TRACKER.TRACKING_FMT, STRINGS.NAMES.ANIMAL_TRACK), 1)
-                        SendRPCToServer(RPC.LeftClick, ACTIONS.WALKTO.code, tpos.x, tpos.z)
-                        self:SpawnMoleTracingAnim(player:GetPosition(), tpos)
+                    -- print("FollowTrack", "WalkTo", dirt_pile, tpos)
+                    -- Talk(string.format(STRINGS.UI.ANIMAL_TRACKER.TRACKING_FMT, STRINGS.NAMES.ANIMAL_TRACK), 1)
+                    UnifiedGoToPoint(player, tpos)
+                    self:SpawnMoleTracingAnim(player:GetPosition(), tpos)
+
+                    WaitForPlayerIdle(player, 10 * FRAMES)
+
+                    if (player and player:IsValid()) and
+                        (dirt_pile and dirt_pile:IsValid()) and
+                        player:GetDistanceSqToInst(dirt_pile) < 4 then
+                        -- print("FollowTrack", "Activate", dirt_pile, tpos)
+                        -- Talk(string.format(STRINGS.UI.ANIMAL_TRACKER.INVESTIGATE_FMT, STRINGS.NAMES.DIRTPILE))
+                        UnifiedActivateDirtPile(player, tpos, dirt_pile)
 
                         WaitForPlayerIdle(player, 10 * FRAMES)
-
-                        if (player and player:IsValid()) and
-                           (dirt_pile and dirt_pile:IsValid()) and
-                           player:GetDistanceSqToInst(dirt_pile) < 4 then
-                            -- print("FollowTrack", "Activate", dirt_pile, tpos)
-                            -- Talk(string.format(STRINGS.UI.ANIMAL_TRACKER.INVESTIGATE_FMT, STRINGS.NAMES.DIRTPILE))
-                            SendRPCToServer(RPC.LeftClick, ACTIONS.ACTIVATE.code, tpos.x, tpos.z, dirt_pile)
-
-                            WaitForPlayerIdle(player, 10 * FRAMES)
-                        else
-                            -- Player interrupted
-                            break
-                        end
-
-                        dirt_pile = GetNextDirtPile()
+                    else
+                        -- Player interrupted
+                        break
                     end
 
-                    -- print("FollowTrack", "End")
+                    dirt_pile = GetNextDirtPile()
+                end
 
-                    local animal_track = findnear("animal_track")
-                    if animal_track then
-                        local x,y,z = GetNextPos(animal_track):Get()
-                        local ents = TheSim:FindEntities(x,y,z, 4)
-                        for k,v in pairs(ents) do
-                            if BEASTS[v.prefab] then
-                                local spos = player:GetPosition()
-                                local tpos = v:GetPosition()
-                                self:SpawnMoleTracingAnim(spos, tpos)
-                                WaitForPlayerIdle(player, 10 * FRAMES)
-                                Talk(string.format(STRINGS.UI.ANIMAL_TRACKER.FOUND_BEAST_FMT, v.name or v.prefab))
-                                if BEASTS.NOT_DANGER[v.prefab] then
-                                    SendRPCToServer(RPC.LeftClick, ACTIONS.WALKTO.code, tpos.x, tpos.z)
-                                else
-                                    -- Go half way to the dangerous beast
-                                    SendRPCToServer(RPC.LeftClick, ACTIONS.WALKTO.code, (spos.x + tpos.x) / 2, (spos.z + tpos.z) / 2)
-                                end
-                                break
+                -- print("FollowTrack", "End")
+
+                local animal_track = findnear("animal_track")
+                if animal_track then
+                    local x,y,z = GetNextPos(animal_track):Get()
+                    local ents = TheSim:FindEntities(x,y,z, 4)
+                    for k,v in pairs(ents) do
+                        if BEASTS[v.prefab] then
+                            local spos = player:GetPosition()
+                            local tpos = v:GetPosition()
+                            self:SpawnMoleTracingAnim(spos, tpos)
+                            WaitForPlayerIdle(player, 10 * FRAMES)
+                            Talk(string.format(STRINGS.UI.ANIMAL_TRACKER.FOUND_BEAST_FMT, v.name or v.prefab))
+                            if BEASTS.NOT_DANGER[v.prefab] then
+                                SendRPCToServer(RPC.LeftClick, ACTIONS.WALKTO.code, tpos.x, tpos.z)
+                            else
+                                -- Go half way to the dangerous beast
+                                SendRPCToServer(RPC.LeftClick, ACTIONS.WALKTO.code, (spos.x + tpos.x) / 2, (spos.z + tpos.z) / 2)
                             end
+                            break
                         end
                     end
                 end
